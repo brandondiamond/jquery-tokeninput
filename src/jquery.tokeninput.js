@@ -61,6 +61,7 @@ var DEFAULT_SETTINGS = {
     onResult: null,
     onAdd: null,
     onDelete: null,
+    onValidate: null,
     onReady: null
 };
 
@@ -653,6 +654,11 @@ $.TokenList = function (input, url_or_data_or_function, settings) {
         }
 
         if(!li_data) {
+            return false;
+        }
+        
+        // A simple hook to do token validation
+        if(settings.onValidate && !settings.onValidate(li_data["name"])) {
             return false;
         }
 
