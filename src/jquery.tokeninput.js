@@ -36,6 +36,7 @@ var DEFAULT_SETTINGS = {
     zindex: 999,
     escapeHTML: true, // NEW
     makeSortable: false, // NEW
+    errorClass: "error",
 
     // Tokenization settings
     tokenLimit: null,
@@ -658,8 +659,13 @@ $.TokenList = function (input, url_or_data_or_function, settings) {
         }
         
         // A simple hook to do token validation
-        if(settings.onValidate && !settings.onValidate(li_data["name"])) {
+        if(settings.onValidate) {
+          if(!settings.onValidate(li_data["name"])) {
+            token_list.addClass(settings.errorClass);
             return false;
+          }
+
+          token_list.removeClass(settings.errorClass);
         }
 
         var callback = settings.onAdd;
