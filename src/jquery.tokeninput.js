@@ -36,6 +36,7 @@ var DEFAULT_SETTINGS = {
     zindex: 999,
     escapeHTML: true, // NEW
     makeSortable: false, // NEW
+    disableAdd: false, // NEW
     errorClass: "error",
 
     // Tokenization settings
@@ -211,7 +212,8 @@ $.TokenList = function (input, url_or_data_or_function, settings) {
     // Create a new text input an attach keyup events
     var input_box = $("<input type=\"text\"  autocomplete=\"off\">")
         .css({
-            outline: "none"
+            outline: "none",
+            visibility: settings.disabledAdd ? "hidden" : "visible"
         })
         .attr("id", settings.idPrefix + input[settings.tokenValue])
         .focus(function () {
