@@ -27,6 +27,8 @@ var DEFAULT_SETTINGS = {
     processPrePopulate: false,
 
     // Display settings
+    confirmation: false, // NEW
+    disableAdd: false, // NEW
     hintText: "Type in a search term",
     noResultsText: "No results",
     searchingText: "Searching...",
@@ -36,7 +38,6 @@ var DEFAULT_SETTINGS = {
     zindex: 999,
     escapeHTML: true, // NEW
     makeSortable: false, // NEW
-    disableAdd: false, // NEW
     errorClass: "error",
 
     // Tokenization settings
@@ -212,8 +213,7 @@ $.TokenList = function (input, url_or_data_or_function, settings) {
     // Create a new text input an attach keyup events
     var input_box = $("<input type=\"text\"  autocomplete=\"off\">")
         .css({
-            outline: "none",
-            visibility: settings.disabledAdd ? "hidden" : "visible"
+            outline: "none"
         })
         .attr("id", settings.idPrefix + input[settings.tokenValue])
         .focus(function () {
@@ -326,7 +326,7 @@ $.TokenList = function (input, url_or_data_or_function, settings) {
 
                     if(!$(this).val().length) {
                         if(selected_token) {
-                            delete_token($(selected_token));
+                            delete_token($(selected_token), true);
                             hidden_input.change();
                         } else if(previous_token.length) {
                             select_token($(previous_token.get(0)));
@@ -345,7 +345,7 @@ $.TokenList = function (input, url_or_data_or_function, settings) {
                     next_token = input_token.next();
                     if(!$(this).val().length) {
                         if(selected_token) {
-                            delete_token($(selected_token));
+                            delete_token($(selected_token), true);
                         } else if(next_token.length) {
                             select_token($(next_token.get(0)));
                         }
@@ -452,6 +452,11 @@ $.TokenList = function (input, url_or_data_or_function, settings) {
         .addClass(settings.classes.inputToken)
         .appendTo(token_list)
         .append(input_box);
+
+    // Prevent addition of new tokens (if requested)
+    if (settings.disableAdd) {
+      input_box.hide();
+    }
 
     // The list to store the dropdown items in
     var dropdown = $("<div>")
@@ -617,11 +622,11 @@ $.TokenList = function (input, url_or_data_or_function, settings) {
             .appendTo(this_token)
             .click(function () {
                 if (!settings.disabled) {
-                    delete_token($(this).parent());
+                    delete_token($(this).parent(), true);
                     hidden_input.change();
                     return false;
                 }
-                delete_token($(this).parent());
+                delete_token($(this).parent(), true);
                 hidden_input.change();
                 return false;
             });
@@ -717,7 +722,7 @@ $.TokenList = function (input, url_or_data_or_function, settings) {
     //  Drag and Drop  Functionality
     //
     function addDragFunctionality(token) {
-        token.bind('mousedown', function() {
+        token.bind('mousedown', function(evt) {
             var token = $(this);
 
             dragToken = token;
@@ -734,9 +739,7 @@ $.TokenList = function (input, url_or_data_or_function, settings) {
 
                 select_token(token);
 
-                var position = $(token).position();
-
-                $(token).clone().appendTo('body').addClass(settings.classes.draggedClone).css({'top': position.top, 'left': position.left});
+                $(token).clone().appendTo('body').addClass(settings.classes.draggedClone).css({'top': evt.pageY, 'left': evt.pageX});
                 token.addClass(settings.classes.draggedToken);
 
                 dragging = true;
@@ -794,7 +797,6 @@ $.TokenList = function (input, url_or_data_or_function, settings) {
 
         $('body').mousemove(function(e) {
             if(!dragging) return;
-
             $('li.'+settings.classes.draggedClone).css({'top': e.pageY, 'left': e.pageX});
         });
     }
@@ -831,15 +833,21 @@ $.TokenList = function (input, url_or_data_or_function, settings) {
     }
 
     function reindex_results() {
-        var ids = [], tokens = [];
-        token_list.find('li').each(function() {
-            var data = $.data(this, "tokeninput");
+        var reindexed = {};
+
+        token_list.find('li').each(function(i, token) {
+            var $token = $(token);
+            var data = $token.data("tokeninput");
             if(data) {
-                ids.push(data[settings.tokenValue]);
-                tokens.push(data);
+                reindexed[$token.attr('data-uniqueid')] = {
+                    'id': data[settings.tokenValue],
+                    'name': data['name'],
+                    'index': i
+                };
             };
         });
-        saved_tokens = tokens;
+
+        saved_tokens = reindexed;
         update_hidden_input(saved_tokens, hidden_input);
     }
 
@@ -897,7 +905,13 @@ $.TokenList = function (input, url_or_data_or_function, settings) {
     }
 
     // Delete a token from the token list
-    function delete_token (token) {
+    function delete_token (token, user) {
+        if (user && settings.confirmation) {
+          if (!confirm(settings.confirmation)) {
+            return false;
+          }
+        }
+        
         // Remove the id from the saved list
         var token_data = $.data(token.get(0), "tokeninput");
         var callback = settings.onDelete;
@@ -906,7 +920,7 @@ $.TokenList = function (input, url_or_data_or_function, settings) {
         if(index > selected_token_index) index--;
 
         var uniqueid = $(token).attr('data-uniqueid');
-
+        
         // Delete the token
         token.remove();
         selected_token = null;
